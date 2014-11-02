@@ -34,42 +34,45 @@ class AMQPWriter
 
 
 
-    private static function chrbytesplit($x, $bytes)
-    {
-        return array_map('chr', AMQPWriter::bytesplit($x, $bytes));
-    }
+   /**
+    * Packs integer into raw byte string in big-endian order
+    * Supports positive and negative ints represented as PHP int or string (except scientific notation)
+    *
+    * Floats has some precision issues and so intentionally not supported.
+    * Beware that floats out of PHP_INT_MAX range will be represented in scientific (exponential) notation when casted to string
+    *
+    * @param int|string $x       Value to pack
+    * @param int        $bytes   Must be multiply of 2
+    * @return string
+    */
+   private static function packBigEndian($x, $bytes)
+      {
+         if(($bytes<=0) || ($bytes%2)) throw new AMQPInvalidArgumentException('Expected bytes count must be multiply of 2, '.$bytes.' given');
 
-
-
-    /**
-     * Splits number (could be either int or string) into array of byte
-     * values (represented as integers) in big-endian byte order.
-     */
-    private static function bytesplit($x, $bytes)
-    {
-        if (is_int($x)) {
-            if ($x < 0) {
-                $x = sprintf("%u", $x);
+         $ox=$x; //purely for dbg purposes (overflow exception)
+         $isNeg=false;
+         if(is_int($x))
+            {
+               if($x<0) {$isNeg=true; $x=abs($x);}
             }
-        }
+         elseif(is_string($x))
+            {
+               if(!is_numeric($x)) throw new AMQPInvalidArgumentException('Unknown numeric string format: '.$x);
+               $x=preg_replace('/^-/', '', $x, 1, $isNeg);
+            }
+         else throw new AMQPInvalidArgumentException('Only integer and numeric string values are supported');
+         if($isNeg) $x=bcadd($x, -1); //in negative domain starting point is -1, not 0
 
-        $res = array();
-
-        while ($bytes > 0) {
-            $b = bcmod($x, '256');
-            $res[] = (int) $b;
-            $x = bcdiv($x, '256', 0);
-            $bytes--;
-        }
-
-        $res = array_reverse($res);
-
-        if ($x != 0) {
-            throw new AMQPOutOfBoundsException("Value too big!");
-        }
-
-        return $res;
-    }
+         $res=array();
+         for($b=0; $b<$bytes; $b+=2)
+            {
+               $chnk=(int)bcmod($x, 65536);
+               $x=bcdiv($x, 65536, 0);
+               $res[]=pack('n', $isNeg? ~$chnk:$chnk);
+            }
+         if($x || ($isNeg && ($chnk&0x8000))) throw new AMQPOutOfBoundsException('Overflow detected while attempting to pack '.$ox.' into '.$bytes.' bytes');
+         return implode(array_reverse($res));
+      }
 
 
 
@@ -228,7 +231,7 @@ class AMQPWriter
             $n2 = ($n & 0x00000000ffffffff);
             $this->out .= pack('NN', $n1, $n2);
         } else {
-            $this->out .= implode("", AMQPWriter::chrbytesplit($n, 8));
+            $this->out.=self::packBigEndian($n, 8);
         }
 
         return $this;
