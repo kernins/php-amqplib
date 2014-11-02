@@ -5,7 +5,7 @@ namespace PhpAmqpLib\Wire;
 use PhpAmqpLib\Exception\AMQPInvalidArgumentException;
 use PhpAmqpLib\Exception\AMQPOutOfBoundsException;
 
-class AMQPWriter
+class AMQPWriter extends FormatHelper
 {
 
     /**
@@ -27,6 +27,8 @@ class AMQPWriter
 
     public function __construct()
     {
+        parent::__construct();
+
         $this->out = "";
         $this->bits = array();
         $this->bitcount = 0;
@@ -209,10 +211,8 @@ class AMQPWriter
 
     private function write_signed_long($n)
     {
-        // although format spec for 'N' mentions unsigned
-        // it will deal with sinned integers as well. tested.
-        $this->out .= pack('N', $n);
-
+        //on my 64bit debian this approach is slightly faster than splitIntoQuads()
+        $this->out.=$this->correctEndianness(pack('l', $n));
         return $this;
     }
 
@@ -224,18 +224,37 @@ class AMQPWriter
     public function write_longlong($n)
     {
         // if PHP_INT_MAX is big enough for that
-        // (always on 64 bits, with smaller values in 32 bits)
-        if ($n <= PHP_INT_MAX) {
+        // direct $n<=PHP_INT_MAX check is unreliable on 64bit due to limited float precision
+        if (bcadd($n, -PHP_INT_MAX) <= 0) {
             // trick explained in http://www.php.net/manual/fr/function.pack.php#109328
-            $n1 = ($n & 0xffffffff00000000) >> 32;
-            $n2 = ($n & 0x00000000ffffffff);
-            $this->out .= pack('NN', $n1, $n2);
+            if($this->is64bits) list($hi, $lo)=$this->splitIntoQuads($n);
+            else {$hi=0; $lo=$n;} //on 32bits hi quad is 0 a priori
+            $this->out .= pack('NN', $hi, $lo);
         } else {
             $this->out.=self::packBigEndian($n, 8);
         }
 
         return $this;
     }
+
+   public function write_signed_longlong($n)
+      {
+         if((bcadd($n, PHP_INT_MAX)>=-1) && (bcadd($n, -PHP_INT_MAX)<=0))
+            {
+               if($this->is64bits) list($hi, $lo)=$this->splitIntoQuads($n);
+               else {$hi=$n<0? -1:0; $lo=$n;} //0xffffffff for negatives
+               $this->out .= pack('NN', $hi, $lo);
+            }
+         else $this->out.=self::packBigEndian($n, 8);
+
+         return $this;
+      }
+
+   private function splitIntoQuads($n)
+      {
+         $n=(int)$n;
+         return array($n>>32, $n&0x00000000ffffffff);
+      }
 
 
 
@@ -285,21 +304,15 @@ class AMQPWriter
 
         foreach ($a as $v) {
             if (is_string($v)) {
-                $data->write('S');
-                $data->write_longstr($v);
+               $data->write_value(self::T_STRING_LONG, $v);
             } elseif (is_int($v)) {
-                $data->write('I');
-                $data->write_signed_long($v);
+               $data->write_value(self::T_INT_LONGLONG, $v);
             } elseif ($v instanceof AMQPDecimal) {
-                $data->write('D');
-                $data->write_octet($v->e);
-                $data->write_signed_long($v->n);
+               $data->write_value(self::T_DECIMAL, $v);
             } elseif (is_array($v)) {
-                $data->write('A');
-                $data->write_array($v);
+               $data->write_value(self::T_ARRAY, $v);
             } elseif (is_bool($v)) {
-                $data->write('t');
-                $data->write_octet($v ? 1 : 0);
+               $data->write_value(self::T_BOOL, $v);
             }
         }
 
@@ -334,32 +347,7 @@ class AMQPWriter
         foreach ($d as $k => $va) {
             list($ftype, $v) = $va;
             $table_data->write_shortstr($k);
-            if ($ftype == 'S') {
-                $table_data->write('S');
-                $table_data->write_longstr($v);
-            } elseif ($ftype == 'I') {
-                $table_data->write('I');
-                $table_data->write_signed_long($v);
-            } elseif ($ftype == 'D') {
-                // 'D' type values are passed AMQPDecimal instances.
-                $table_data->write('D');
-                $table_data->write_octet($v->e);
-                $table_data->write_signed_long($v->n);
-            } elseif ($ftype == 'T') {
-                $table_data->write('T');
-                $table_data->write_timestamp($v);
-            } elseif ($ftype == 'F') {
-                $table_data->write('F');
-                $table_data->write_table($v);
-            } elseif ($ftype == 'A') {
-                $table_data->write('A');
-                $table_data->write_array($v);
-            } elseif ($ftype == 't') {
-                $table_data->write('t');
-                $table_data->write_octet($v ? 1 : 0);
-            } else {
-                throw new AMQPInvalidArgumentException(sprintf("Invalid type '%s'", $ftype));
-            }
+            $table_data->write_value($ftype, $v);
         }
 
         $table_data = $table_data->getvalue();
@@ -368,4 +356,59 @@ class AMQPWriter
 
         return $this;
     }
+
+   private function write_value($type, $val)
+      {
+         //We need a protocol version available in this context
+         //so we can throw an exception if one would try to use 091-specific types with 08 proto
+
+         switch($type)
+            {
+               case self::T_INT_LONG:
+                  $this->write(self::T_INT_LONG);
+                  $this->write_signed_long($val);
+                  break;
+               case self::T_INT_LONG_U:
+                  $this->write(self::T_INT_LONG_U);
+                  $this->write_long($val);
+                  break;
+               case self::T_INT_LONGLONG:
+                  $this->write(self::T_INT_LONGLONG);
+                  $this->write_signed_longlong($val);
+                  break;
+               case self::T_INT_LONGLONG_U:
+                  $this->write(self::T_INT_LONGLONG_U);
+                  $this->write_longlong($val);
+                  break;
+               case self::T_DECIMAL:
+                  //decimal-value = scale long-uint, scale = OCTET
+                  //according to https://www.rabbitmq.com/resources/specs/amqp0-[8|9-1].pdf
+                  $this->write(self::T_DECIMAL);
+                  $this->write_octet($val->e);
+                  $this->write_long($val->n);
+                  break;
+               case self::T_TIMESTAMP:
+                  $this->write(self::T_TIMESTAMP);
+                  $this->write_timestamp($val);
+                  break;
+               case self::T_BOOL:
+                  $this->write(self::T_BOOL);
+                  $this->write_octet($val ? 1 : 0);
+                  break;
+               case self::T_STRING_LONG:
+                  $this->write(self::T_STRING_LONG);
+                  $this->write_longstr($val);
+                  break;
+               case self::T_ARRAY:
+                  $this->write(self::T_ARRAY);
+                  $this->write_array($val);
+                  break;
+               case self::T_TABLE:
+                  $this->write(self::T_TABLE);
+                  $this->write_table($val);
+                  break;
+               default:
+                  throw new AMQPInvalidArgumentException(sprintf("Unsupported type '%s'", $type));
+            }
+      }
 }

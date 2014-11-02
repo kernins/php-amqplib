@@ -14,7 +14,7 @@ use PhpAmqpLib\Wire\IO\AbstractIO;
  *
  * TODO : split this class: AMQPStreamReader and a AMQPBufferReader
  */
-class AMQPReader
+class AMQPReader extends FormatHelper
 {
 
     const BIT = 1;
@@ -48,11 +48,6 @@ class AMQPReader
     protected $bitcount;
 
     /**
-     * @var bool
-     */
-    protected $is64bits;
-
-    /**
      * @var int
      */
     protected $timeout;
@@ -76,14 +71,14 @@ class AMQPReader
      */
     public function __construct($str, AbstractIO $io = null, $timeout = 0)
     {
+        parent::__construct();
+
         $this->str = $str;
         $this->str_length = mb_strlen($this->str, 'ASCII');
         $this->io = $io;
         $this->offset = 0;
         $this->bitcount = $this->bits = 0;
         $this->timeout = $timeout;
-
-        $this->is64bits = ((int) 4294967296) != 0 ? true : false;
     }
 
 
@@ -268,9 +263,7 @@ class AMQPReader
     {
         $this->bitcount = $this->bits = 0;
         list(, $res) = unpack('N', $this->rawread(4));
-        $sres = sprintf("%u", $res);
-
-        return $sres;
+        return !$this->is64bits && self::getLongMSB($res)? sprintf('%u', $res) : $res;
     }
 
 
@@ -281,10 +274,7 @@ class AMQPReader
     private function read_signed_long()
     {
         $this->bitcount = $this->bits = 0;
-        // In PHP unpack('N') always return signed value,
-        // on both 32 and 64 bit systems!
-        list(, $res) = unpack('N', $this->rawread(4));
-
+        list(, $res)=unpack('l', $this->correctEndianness($this->rawread(4)));
         return $res;
     }
 
@@ -297,18 +287,35 @@ class AMQPReader
      *
      * @return string
      */
-    public function read_longlong()
-    {
-        $this->bitcount = $this->bits = 0;
-        $hi = unpack('N', $this->rawread(4));
-        $lo = unpack('N', $this->rawread(4));
+   public function read_longlong()
+      {
+         $this->bitcount = $this->bits = 0;
 
-        // workaround signed/unsigned braindamage in php
-        $hi = sprintf("%u", $hi[1]);
-        $lo = sprintf("%u", $lo[1]);
+         list(, $hi, $lo)= unpack('N2', $this->rawread(8));
+         $msb=self::getLongMSB($hi);
 
-        return bcadd(bcmul($hi, "4294967296"), $lo);
-    }
+         if(!$this->is64bits)
+            {
+               if($msb) $hi=sprintf('%u', $hi);
+               if(self::getLongMSB($lo)) $lo=sprintf('%u', $lo);
+            }
+         return bcadd($this->is64bits && !$msb? $hi<<32:bcmul($hi, '4294967296'), $lo);
+      }
+
+   public function read_signed_longlong()
+      {
+         $this->bitcount = $this->bits = 0;
+
+         list(, $hi, $lo)= unpack('N2', $this->rawread(8));
+         return $this->is64bits?
+            bcadd($hi<<32, $lo) :
+            bcadd(bcmul($hi, '4294967296'), self::getLongMSB($lo)? sprintf('%u', $lo):$lo);
+      }
+
+   private static function getLongMSB($longInt)
+      {
+         return (bool)($longInt&0x80000000);
+      }
 
 
 
@@ -415,52 +422,58 @@ class AMQPReader
      *
      * @return mixed
      */
-    public function read_value($fieldType)
-    {
-        $this->bitcount = $this->bits = 0;
+   public function read_value($fieldType)
+      {
+         $this->bitcount = $this->bits = 0;
 
-        $val = NULL;
-        switch ($fieldType) {
-            case 'S': // Long string
-                $val = $this->read_longstr();
-                break;
-            case 'I': // Signed 32-bit
-                $val = $this->read_signed_long();
-                break;
-            case 'D': // Decimal
-                $e = $this->read_octet();
-                $n = $this->read_signed_long();
-                $val = new AMQPDecimal($n, $e);
-                break;
-            case 't':
-                $val = $this->read_octet();
-                break;
-            case 'l':
-                $val = $this->read_longlong();
-                break;
-            case 'T': // Timestamp
-                $val = $this->read_timestamp();
-                break;
-            case 'F': // Table
-                $val = $this->read_table();
-                break;
-            case 'A': // Array
-                $val = $this->read_array();
-                break;
-            case 'b': // bit
-                $val = $this->read_bit();
-                break;
-            case 'V': // void
-                $val = null;
-                break;                
-            default:
-                // UNKNOWN TYPE
-                throw new AMQPRuntimeException("Usupported table field type {$fieldType}");
-                break;
-        }
-
-        return $val;
-    }
+         $val = NULL;
+         switch($fieldType)
+            {
+               case self::T_INT_LONG:
+                  $val=$this->read_signed_long();
+                  break;
+               case self::T_INT_LONG_U:
+                  $val=$this->read_long();
+                  break;
+               case self::T_INT_LONGLONG:
+                  $val=$this->read_signed_longlong();
+                  break;
+               case self::T_INT_LONGLONG_U:
+                  $val=$this->read_longlong();
+                  break;
+               case self::T_DECIMAL:
+                  //decimal-value = scale long-uint, scale = OCTET
+                  //according to https://www.rabbitmq.com/resources/specs/amqp0-[8|9-1].pdf
+                  $e = $this->read_octet();
+                  $n = $this->read_long();
+                  $val = new AMQPDecimal($n, $e);
+                  break;
+               case self::T_TIMESTAMP:
+                  $val=$this->read_timestamp();
+                  break;
+               case self::T_BOOL:
+                  $val=$this->read_octet();
+                  break;
+               case self::T_BIT:
+                  $val=$this->read_bit();
+                  break;
+               case self::T_STRING_LONG:
+                  $val=$this->read_longstr();
+                  break;
+               case self::T_ARRAY:
+                  $val=$this->read_array();
+                  break;
+               case self::T_TABLE:
+                  $val=$this->read_table();
+                  break;
+               case self::T_VOID:
+                  $val=NULL;
+                  break;
+               default:
+                  throw new AMQPInvalidArgumentException(sprintf("Unsupported type '%s'", $type));
+            }
+         return $val;
+      }
 
 
 
