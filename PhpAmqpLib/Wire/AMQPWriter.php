@@ -122,12 +122,7 @@ class AMQPWriter extends FormatHelper
      */
     public function write_bit($b)
     {
-        if ($b) {
-            $b = 1;
-        } else {
-            $b = 0;
-        }
-
+        $b=(int)(bool)$b;
         $shift = $this->bitcount % 8;
 
         if ($shift == 0) {
@@ -171,7 +166,7 @@ class AMQPWriter extends FormatHelper
     public function write_octet($n)
     {
         if ($n < 0 || $n > 255) {
-            throw new AMQPInvalidArgumentException('Octet out of range 0..255');
+            throw new AMQPInvalidArgumentException('Octet out of range: '.$n);
         }
 
         $this->out .= chr($n);
@@ -187,7 +182,7 @@ class AMQPWriter extends FormatHelper
     public function write_short($n)
     {
         if ($n < 0 || $n > 65535) {
-            throw new AMQPInvalidArgumentException('Octet out of range 0..65535');
+            throw new AMQPInvalidArgumentException('Short out of range: '.$n);
         }
 
         $this->out .= pack('n', $n);
@@ -202,6 +197,10 @@ class AMQPWriter extends FormatHelper
      */
     public function write_long($n)
     {
+        if(($n<0) || ($n>4294967295)) throw new AMQPInvalidArgumentException('Long out of range: '.$n);
+
+        //Numeric strings >PHP_INT_MAX on 32bit are casted to PHP_INT_MAX, damn PHP
+        if(!$this->is64bits && is_string($n)) $n=(float)$n;
         $this->out .= pack('N', $n);
 
         return $this;
@@ -211,6 +210,8 @@ class AMQPWriter extends FormatHelper
 
     private function write_signed_long($n)
     {
+        if(($n<-2147483648) || ($n>2147483647)) throw new AMQPInvalidArgumentException('Signed long out of range: '.$n);
+
         //on my 64bit debian this approach is slightly faster than splitIntoQuads()
         $this->out.=$this->correctEndianness(pack('l', $n));
         return $this;
@@ -223,15 +224,18 @@ class AMQPWriter extends FormatHelper
      */
     public function write_longlong($n)
     {
+        if($n<0) throw new AMQPInvalidArgumentException('Longlong out of range: '.$n);
+
         // if PHP_INT_MAX is big enough for that
-        // direct $n<=PHP_INT_MAX check is unreliable on 64bit due to limited float precision
+        // direct $n<=PHP_INT_MAX check is unreliable on 64bit (values close to max) due to limited float precision
         if (bcadd($n, -PHP_INT_MAX) <= 0) {
             // trick explained in http://www.php.net/manual/fr/function.pack.php#109328
             if($this->is64bits) list($hi, $lo)=$this->splitIntoQuads($n);
             else {$hi=0; $lo=$n;} //on 32bits hi quad is 0 a priori
             $this->out .= pack('NN', $hi, $lo);
         } else {
-            $this->out.=self::packBigEndian($n, 8);
+            try {$this->out.=self::packBigEndian($n, 8);}
+            catch(AMQPOutOfBoundsException $ex) {throw new AMQPInvalidArgumentException('Longlong out of range: '.$n, 0, $ex);}
         }
 
         return $this;
@@ -245,7 +249,13 @@ class AMQPWriter extends FormatHelper
                else {$hi=$n<0? -1:0; $lo=$n;} //0xffffffff for negatives
                $this->out .= pack('NN', $hi, $lo);
             }
-         else $this->out.=self::packBigEndian($n, 8);
+         elseif($this->is64bits) throw new AMQPInvalidArgumentException('Signed longlong out of range: '.$n);
+         else
+            {
+               if(bcadd($n, '-9223372036854775807')>0) throw new AMQPInvalidArgumentException('Signed longlong out of range: '.$n);
+               try {$this->out.=self::packBigEndian($n, 8);} //will catch only negative overflow, as values >9223372036854775807 are valid for 8bytes range (unsigned)
+               catch(AMQPOutOfBoundsException $ex) {throw new AMQPInvalidArgumentException('Signed longlong out of range: '.$n, 0, $ex);}
+            }
 
          return $this;
       }
