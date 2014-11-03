@@ -316,7 +316,7 @@ class AMQPWriter extends FormatHelper
             if (is_string($v)) {
                $data->write_value(self::T_STRING_LONG, $v);
             } elseif (is_int($v)) {
-               $data->write_value(self::T_INT_LONGLONG, $v);
+               $data->write_value(self::T_INT_LONG, $v);
             } elseif ($v instanceof AMQPDecimal) {
                $data->write_value(self::T_DECIMAL, $v);
             } elseif (is_array($v)) {
