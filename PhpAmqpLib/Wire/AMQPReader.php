@@ -214,6 +214,13 @@ class AMQPReader extends AbstractClient
         return $res;
     }
 
+   public function read_signed_octet()
+      {
+         $this->bitcount = $this->bits = 0;
+         list(, $res) = unpack('c', $this->rawread(1));
+         return $res;
+      }
+
 
 
     /**
@@ -226,6 +233,13 @@ class AMQPReader extends AbstractClient
 
         return $res;
     }
+
+   public function read_signed_short()
+      {
+         $this->bitcount = $this->bits = 0;
+         list(, $res) = unpack('s', $this->correctEndianness($this->rawread(2)));
+         return $res;
+      }
 
 
 
@@ -429,6 +443,20 @@ class AMQPReader extends AbstractClient
          $val = NULL;
          switch($fieldType)
             {
+               case AMQPAbstractCollection::T_INT_SHORTSHORT:
+                  //according to AMQP091 spec, 'b' is not bit, it is short-short-int
+                  //$val=$this->read_bit();
+                  $val=$this->read_signed_octet();
+                  break;
+               case AMQPAbstractCollection::T_INT_SHORTSHORT_U:
+                  $val=$this->read_octet();
+                  break;
+               case AMQPAbstractCollection::T_INT_SHORT:
+                  $val=$this->read_signed_short();
+                  break;
+               case AMQPAbstractCollection::T_INT_SHORT_U:
+                  $val=$this->read_short();
+                  break;
                case AMQPAbstractCollection::T_INT_LONG:
                   $val=$this->read_signed_long();
                   break;
@@ -454,8 +482,8 @@ class AMQPReader extends AbstractClient
                case AMQPAbstractCollection::T_BOOL:
                   $val=$this->read_octet();
                   break;
-               case AMQPAbstractCollection::T_BIT:
-                  $val=$this->read_bit();
+               case AMQPAbstractCollection::T_STRING_SHORT:
+                  $val=$this->read_shortstr();
                   break;
                case AMQPAbstractCollection::T_STRING_LONG:
                   $val=$this->read_longstr();

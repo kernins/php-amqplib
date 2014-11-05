@@ -174,6 +174,15 @@ class AMQPWriter extends AbstractClient
         return $this;
     }
 
+   public function write_signed_octet($n)
+      {
+         if(($n<-128) || ($n>127)) throw new AMQPInvalidArgumentException('Signed octet out of range: '.$n);
+
+         $this->out.=pack('c', $n);
+         return $this;
+      }
+
+
 
 
     /**
@@ -189,6 +198,14 @@ class AMQPWriter extends AbstractClient
 
         return $this;
     }
+
+   public function write_signed_short($n)
+      {
+         if(($n<-32768) || ($n>32767)) throw new AMQPInvalidArgumentException('Signed short out of range: '.$n);
+
+         $this->out.=$this->correctEndianness(pack('s', $n));
+         return $this;
+      }
 
 
 
@@ -368,6 +385,22 @@ class AMQPWriter extends AbstractClient
 
          switch($type)
             {
+               case AMQPAbstractCollection::T_INT_SHORTSHORT:
+                  $this->write(AMQPAbstractCollection::T_INT_SHORTSHORT);
+                  $this->write_signed_octet($val);
+                  break;
+               case AMQPAbstractCollection::T_INT_SHORTSHORT_U:
+                  $this->write(AMQPAbstractCollection::T_INT_SHORTSHORT_U);
+                  $this->write_octet($val);
+                  break;
+               case AMQPAbstractCollection::T_INT_SHORT:
+                  $this->write(AMQPAbstractCollection::T_INT_SHORT);
+                  $this->write_signed_short($val);
+                  break;
+               case AMQPAbstractCollection::T_INT_SHORT_U:
+                  $this->write(AMQPAbstractCollection::T_INT_SHORT_U);
+                  $this->write_short($val);
+                  break;
                case AMQPAbstractCollection::T_INT_LONG:
                   $this->write(AMQPAbstractCollection::T_INT_LONG);
                   $this->write_signed_long($val);
@@ -398,6 +431,10 @@ class AMQPWriter extends AbstractClient
                case AMQPAbstractCollection::T_BOOL:
                   $this->write(AMQPAbstractCollection::T_BOOL);
                   $this->write_octet($val ? 1 : 0);
+                  break;
+               case AMQPAbstractCollection::T_STRING_SHORT:
+                  $this->write(AMQPAbstractCollection::T_STRING_SHORT);
+                  $this->write_shortstr($val);
                   break;
                case AMQPAbstractCollection::T_STRING_LONG:
                   $this->write(AMQPAbstractCollection::T_STRING_LONG);

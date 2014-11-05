@@ -59,6 +59,32 @@ class WireTest extends \PHPUnit_Framework_TestCase
 
 
 
+      public function testSignedOctetWriteRead()
+         {
+            for($i=-128; $i<=127; $i++) $this->signedOctetWriteRead($i);
+         }
+
+      public function testSignedOctetOutOfRangeLower()
+         {
+            $this->setExpectedException('PhpAmqpLib\Exception\AMQPInvalidArgumentException');
+            $this->signedOctetWriteRead(-129);
+            $this->fail('Overflow not detected!');
+         }
+
+      public function testSignedOctetOutOfRangeUpper()
+         {
+            $this->setExpectedException('PhpAmqpLib\Exception\AMQPInvalidArgumentException');
+            $this->signedOctetWriteRead(128);
+            $this->fail('Overflow not detected!');
+         }
+
+      protected function signedOctetWriteRead($v)
+         {
+            $this->writeAndRead($v, 'write_signed_octet', 'read_signed_octet');
+         }
+
+
+
       public function testShortWriteRead()
          {
             for($i=0; $i<=65535; $i++) $this->shortWriteRead($i);
@@ -81,6 +107,32 @@ class WireTest extends \PHPUnit_Framework_TestCase
       protected function shortWriteRead($v)
          {
             $this->writeAndRead($v, 'write_short', 'read_short');
+         }
+
+
+
+      public function testSignedShortWriteRead()
+         {
+            for($i=-32768; $i<=32767; $i++) $this->signedShortWriteRead($i);
+         }
+
+      public function testSignedShortOutOfRangeLower()
+         {
+            $this->setExpectedException('PhpAmqpLib\Exception\AMQPInvalidArgumentException');
+            $this->signedShortWriteRead(-32769);
+            $this->fail('Overflow not detected!');
+         }
+
+      public function testSignedShortOutOfRangeUpper()
+         {
+            $this->setExpectedException('PhpAmqpLib\Exception\AMQPInvalidArgumentException');
+            $this->signedShortWriteRead(32768);
+            $this->fail('Overflow not detected!');
+         }
+
+      protected function signedShortWriteRead($v)
+         {
+            $this->writeAndRead($v, 'write_signed_short', 'read_signed_short');
          }
 
 
@@ -128,7 +180,7 @@ class WireTest extends \PHPUnit_Framework_TestCase
 
       public function testSignedLongWriteRead()
          {
-            for($i=0; $i<self::LONG_RND_ITERS; $i++) $this->signedLongWriteRead(rand(-2147483648, 2147483647));
+            for($i=0; $i<self::LONG_RND_ITERS; $i++) $this->signedLongWriteRead(mt_rand(-2147483648, 2147483647));
 
             //values of interest
             $this->signedLongWriteRead('-2147483648');

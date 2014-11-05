@@ -14,6 +14,10 @@ abstract class AMQPAbstractCollection implements \Iterator, \ArrayAccess
       const PROTO_091=AbstractChannel::PROTO_091;
 
 
+      const T_INT_SHORTSHORT='b';   //is it a typo in https://www.rabbitmq.com/resources/specs/amqp0-9-1.pdf ?
+      const T_INT_SHORTSHORT_U='B'; //all other int types uses CAPITAL letters for signed
+      const T_INT_SHORT='U';
+      const T_INT_SHORT_U='u';
       const T_INT_LONG='I';
       const T_INT_LONG_U='i';
       const T_INT_LONGLONG='L';
@@ -24,8 +28,8 @@ abstract class AMQPAbstractCollection implements \Iterator, \ArrayAccess
       const T_VOID='V';
 
       const T_BOOL='t';
-      const T_BIT='b';
 
+      const T_STRING_SHORT='s';
       const T_STRING_LONG='S';
 
       const T_ARRAY='A';
