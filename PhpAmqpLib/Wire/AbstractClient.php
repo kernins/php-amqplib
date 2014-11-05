@@ -2,26 +2,8 @@
 namespace PhpAmqpLib\Wire;
 
 
-class FormatHelper
+class AbstractClient
    {
-      const T_INT_LONG='I';
-      const T_INT_LONG_U='i';
-      const T_INT_LONGLONG='L';
-      const T_INT_LONGLONG_U='l';
-
-      const T_DECIMAL='D';
-      const T_TIMESTAMP='T';
-      const T_VOID='V';
-
-      const T_BOOL='t';
-      const T_BIT='b';
-
-      const T_STRING_LONG='S';
-
-      const T_ARRAY='A';
-      const T_TABLE='F';
-
-
       protected $is64bits;
       protected $isLittleEndian;
 
@@ -48,4 +30,3 @@ class FormatHelper
             return $this->isLittleEndian? strrev($byteStr) : $byteStr;
          }
    }
-?>

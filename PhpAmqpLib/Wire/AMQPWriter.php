@@ -5,7 +5,7 @@ namespace PhpAmqpLib\Wire;
 use PhpAmqpLib\Exception\AMQPInvalidArgumentException;
 use PhpAmqpLib\Exception\AMQPOutOfBoundsException;
 
-class AMQPWriter extends FormatHelper
+class AMQPWriter extends AbstractClient
 {
 
     /**
@@ -301,41 +301,6 @@ class AMQPWriter extends FormatHelper
 
 
     /**
-     * Supports the writing of Array types, so that you can implement
-     * array methods, like Rabbitmq's HA parameters
-     *
-     * @param array $a
-     *
-     * @return self
-     */
-    public function write_array($a)
-    {
-        $data = new AMQPWriter();
-
-        foreach ($a as $v) {
-            if (is_string($v)) {
-               $data->write_value(self::T_STRING_LONG, $v);
-            } elseif (is_int($v)) {
-               $data->write_value(self::T_INT_LONG, $v);
-            } elseif ($v instanceof AMQPDecimal) {
-               $data->write_value(self::T_DECIMAL, $v);
-            } elseif (is_array($v)) {
-               $data->write_value(self::T_ARRAY, $v);
-            } elseif (is_bool($v)) {
-               $data->write_value(self::T_BOOL, $v);
-            }
-        }
-
-        $data = $data->getvalue();
-        $this->write_long(mb_strlen($data, 'ASCII'));
-        $this->write($data);
-
-        return $this;
-    }
-
-
-
-    /**
      * Write unix time_t value as 64 bit timestamp.
      */
     public function write_timestamp($v)
@@ -348,8 +313,37 @@ class AMQPWriter extends FormatHelper
 
 
     /**
+     * Supports the writing of Array types, so that you can implement
+     * array methods, like Rabbitmq's HA parameters
+     *
+     * @param AMQPArray|array $a    Instance of AMQPArray or PHP array WITHOUT format hints (unlike write_table())
+     *
+     * @return self
+     */
+    public function write_array($a)
+    {
+        if(!($a instanceof AMQPArray)) $a=new AMQPArray($a);
+        $data = new AMQPWriter();
+
+        foreach ($a as $v) {
+            $data->write_value($v[0], $v[1]);
+        }
+
+        $data = $data->getvalue();
+        $this->write_long(mb_strlen($data, 'ASCII'));
+        $this->write($data);
+
+        return $this;
+    }
+
+
+
+    /**
      * Write PHP array, as table. Input array format: keys are strings,
      * values are (type,value) tuples.
+     *
+     * @param AMQPTable|array $d Instance of AMQPTable or PHP array WITH format hints (unlike write_array())
+     * @return self
      */
     public function write_table($d)
     {
@@ -374,47 +368,47 @@ class AMQPWriter extends FormatHelper
 
          switch($type)
             {
-               case self::T_INT_LONG:
-                  $this->write(self::T_INT_LONG);
+               case AMQPAbstractCollection::T_INT_LONG:
+                  $this->write(AMQPAbstractCollection::T_INT_LONG);
                   $this->write_signed_long($val);
                   break;
-               case self::T_INT_LONG_U:
-                  $this->write(self::T_INT_LONG_U);
+               case AMQPAbstractCollection::T_INT_LONG_U:
+                  $this->write(AMQPAbstractCollection::T_INT_LONG_U);
                   $this->write_long($val);
                   break;
-               case self::T_INT_LONGLONG:
-                  $this->write(self::T_INT_LONGLONG);
+               case AMQPAbstractCollection::T_INT_LONGLONG:
+                  $this->write(AMQPAbstractCollection::T_INT_LONGLONG);
                   $this->write_signed_longlong($val);
                   break;
-               case self::T_INT_LONGLONG_U:
-                  $this->write(self::T_INT_LONGLONG_U);
+               case AMQPAbstractCollection::T_INT_LONGLONG_U:
+                  $this->write(AMQPAbstractCollection::T_INT_LONGLONG_U);
                   $this->write_longlong($val);
                   break;
-               case self::T_DECIMAL:
+               case AMQPAbstractCollection::T_DECIMAL:
                   //decimal-value = scale long-uint, scale = OCTET
                   //according to https://www.rabbitmq.com/resources/specs/amqp0-[8|9-1].pdf
-                  $this->write(self::T_DECIMAL);
+                  $this->write(AMQPAbstractCollection::T_DECIMAL);
                   $this->write_octet($val->e);
                   $this->write_long($val->n);
                   break;
-               case self::T_TIMESTAMP:
-                  $this->write(self::T_TIMESTAMP);
+               case AMQPAbstractCollection::T_TIMESTAMP:
+                  $this->write(AMQPAbstractCollection::T_TIMESTAMP);
                   $this->write_timestamp($val);
                   break;
-               case self::T_BOOL:
-                  $this->write(self::T_BOOL);
+               case AMQPAbstractCollection::T_BOOL:
+                  $this->write(AMQPAbstractCollection::T_BOOL);
                   $this->write_octet($val ? 1 : 0);
                   break;
-               case self::T_STRING_LONG:
-                  $this->write(self::T_STRING_LONG);
+               case AMQPAbstractCollection::T_STRING_LONG:
+                  $this->write(AMQPAbstractCollection::T_STRING_LONG);
                   $this->write_longstr($val);
                   break;
-               case self::T_ARRAY:
-                  $this->write(self::T_ARRAY);
+               case AMQPAbstractCollection::T_ARRAY:
+                  $this->write(AMQPAbstractCollection::T_ARRAY);
                   $this->write_array($val);
                   break;
-               case self::T_TABLE:
-                  $this->write(self::T_TABLE);
+               case AMQPAbstractCollection::T_TABLE:
+                  $this->write(AMQPAbstractCollection::T_TABLE);
                   $this->write_table($val);
                   break;
                default:

@@ -14,7 +14,7 @@ use PhpAmqpLib\Wire\IO\AbstractIO;
  *
  * TODO : split this class: AMQPStreamReader and a AMQPBufferReader
  */
-class AMQPReader extends FormatHelper
+class AMQPReader extends AbstractClient
 {
 
     const BIT = 1;
@@ -429,48 +429,48 @@ class AMQPReader extends FormatHelper
          $val = NULL;
          switch($fieldType)
             {
-               case self::T_INT_LONG:
+               case AMQPAbstractCollection::T_INT_LONG:
                   $val=$this->read_signed_long();
                   break;
-               case self::T_INT_LONG_U:
+               case AMQPAbstractCollection::T_INT_LONG_U:
                   $val=$this->read_long();
                   break;
-               case self::T_INT_LONGLONG:
+               case AMQPAbstractCollection::T_INT_LONGLONG:
                   $val=$this->read_signed_longlong();
                   break;
-               case self::T_INT_LONGLONG_U:
+               case AMQPAbstractCollection::T_INT_LONGLONG_U:
                   $val=$this->read_longlong();
                   break;
-               case self::T_DECIMAL:
+               case AMQPAbstractCollection::T_DECIMAL:
                   //decimal-value = scale long-uint, scale = OCTET
                   //according to https://www.rabbitmq.com/resources/specs/amqp0-[8|9-1].pdf
                   $e = $this->read_octet();
                   $n = $this->read_long();
                   $val = new AMQPDecimal($n, $e);
                   break;
-               case self::T_TIMESTAMP:
+               case AMQPAbstractCollection::T_TIMESTAMP:
                   $val=$this->read_timestamp();
                   break;
-               case self::T_BOOL:
+               case AMQPAbstractCollection::T_BOOL:
                   $val=$this->read_octet();
                   break;
-               case self::T_BIT:
+               case AMQPAbstractCollection::T_BIT:
                   $val=$this->read_bit();
                   break;
-               case self::T_STRING_LONG:
+               case AMQPAbstractCollection::T_STRING_LONG:
                   $val=$this->read_longstr();
                   break;
-               case self::T_ARRAY:
+               case AMQPAbstractCollection::T_ARRAY:
                   $val=$this->read_array();
                   break;
-               case self::T_TABLE:
+               case AMQPAbstractCollection::T_TABLE:
                   $val=$this->read_table();
                   break;
-               case self::T_VOID:
+               case AMQPAbstractCollection::T_VOID:
                   $val=NULL;
                   break;
                default:
-                  throw new AMQPInvalidArgumentException(sprintf("Unsupported type '%s'", $type));
+                  throw new AMQPInvalidArgumentException(sprintf("Unsupported type '%s'", $fieldType));
             }
          return $val;
       }
