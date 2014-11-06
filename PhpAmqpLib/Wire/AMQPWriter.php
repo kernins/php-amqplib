@@ -364,11 +364,13 @@ class AMQPWriter extends AbstractClient
      */
     public function write_table($d)
     {
+        $typeIsSym=!($d instanceof AMQPTable); //purely for back-compat purposes
+
         $table_data = new AMQPWriter();
         foreach ($d as $k => $va) {
             list($ftype, $v) = $va;
             $table_data->write_shortstr($k);
-            $table_data->write_value($ftype, $v);
+            $table_data->write_value($typeIsSym? AMQPAbstractCollection::getDataTypeForSymbol($ftype):$ftype, $v);
         }
 
         $table_data = $table_data->getvalue();
@@ -378,74 +380,64 @@ class AMQPWriter extends AbstractClient
         return $this;
     }
 
+   /**
+    * @param int $type  One of AMQPAbstractCollection::T_* constants
+    * @param mixed $val
+    */
    private function write_value($type, $val)
       {
-         //We need a protocol version available in this context
-         //so we can throw an exception if one would try to use 091-specific types with 08 proto
+         //This will find appropriate symbol for given data type for currently selected protocol
+         //Also will raise an exception on unknown type
+         $this->write(AMQPAbstractCollection::getSymbolForDataType($type));
 
          switch($type)
             {
                case AMQPAbstractCollection::T_INT_SHORTSHORT:
-                  $this->write(AMQPAbstractCollection::T_INT_SHORTSHORT);
                   $this->write_signed_octet($val);
                   break;
                case AMQPAbstractCollection::T_INT_SHORTSHORT_U:
-                  $this->write(AMQPAbstractCollection::T_INT_SHORTSHORT_U);
                   $this->write_octet($val);
                   break;
                case AMQPAbstractCollection::T_INT_SHORT:
-                  $this->write(AMQPAbstractCollection::T_INT_SHORT);
                   $this->write_signed_short($val);
                   break;
                case AMQPAbstractCollection::T_INT_SHORT_U:
-                  $this->write(AMQPAbstractCollection::T_INT_SHORT_U);
                   $this->write_short($val);
                   break;
                case AMQPAbstractCollection::T_INT_LONG:
-                  $this->write(AMQPAbstractCollection::T_INT_LONG);
                   $this->write_signed_long($val);
                   break;
                case AMQPAbstractCollection::T_INT_LONG_U:
-                  $this->write(AMQPAbstractCollection::T_INT_LONG_U);
                   $this->write_long($val);
                   break;
                case AMQPAbstractCollection::T_INT_LONGLONG:
-                  $this->write(AMQPAbstractCollection::T_INT_LONGLONG);
                   $this->write_signed_longlong($val);
                   break;
                case AMQPAbstractCollection::T_INT_LONGLONG_U:
-                  $this->write(AMQPAbstractCollection::T_INT_LONGLONG_U);
                   $this->write_longlong($val);
                   break;
                case AMQPAbstractCollection::T_DECIMAL:
                   //decimal-value = scale long-uint, scale = OCTET
                   //according to https://www.rabbitmq.com/resources/specs/amqp0-[8|9-1].pdf
-                  $this->write(AMQPAbstractCollection::T_DECIMAL);
                   $this->write_octet($val->e);
                   $this->write_long($val->n);
                   break;
                case AMQPAbstractCollection::T_TIMESTAMP:
-                  $this->write(AMQPAbstractCollection::T_TIMESTAMP);
                   $this->write_timestamp($val);
                   break;
                case AMQPAbstractCollection::T_BOOL:
-                  $this->write(AMQPAbstractCollection::T_BOOL);
                   $this->write_octet($val ? 1 : 0);
                   break;
                case AMQPAbstractCollection::T_STRING_SHORT:
-                  $this->write(AMQPAbstractCollection::T_STRING_SHORT);
                   $this->write_shortstr($val);
                   break;
                case AMQPAbstractCollection::T_STRING_LONG:
-                  $this->write(AMQPAbstractCollection::T_STRING_LONG);
                   $this->write_longstr($val);
                   break;
                case AMQPAbstractCollection::T_ARRAY:
-                  $this->write(AMQPAbstractCollection::T_ARRAY);
                   $this->write_array($val);
                   break;
                case AMQPAbstractCollection::T_TABLE:
-                  $this->write(AMQPAbstractCollection::T_TABLE);
                   $this->write_table($val);
                   break;
                default:

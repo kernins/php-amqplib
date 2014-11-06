@@ -9,31 +9,33 @@ use PhpAmqpLib\Channel\AbstractChannel, PhpAmqpLib\Exception;
  */
 abstract class AMQPAbstractCollection implements \Iterator, \ArrayAccess
    {
-      //just for convinience
+      //protocol defines available field types and their corresponding symbols
       const PROTO_080=AbstractChannel::PROTO_080;
       const PROTO_091=AbstractChannel::PROTO_091;
+      const PROTO_RBT='rabbit'; //pseudo proto
 
 
-      const T_INT_SHORTSHORT='b';   //is it a typo in https://www.rabbitmq.com/resources/specs/amqp0-9-1.pdf ?
-      const T_INT_SHORTSHORT_U='B'; //all other int types uses CAPITAL letters for signed
-      const T_INT_SHORT='U';
-      const T_INT_SHORT_U='u';
-      const T_INT_LONG='I';
-      const T_INT_LONG_U='i';
-      const T_INT_LONGLONG='L';
-      const T_INT_LONGLONG_U='l';
+      //Abstract data types
+      const T_INT_SHORTSHORT     = 1;
+      const T_INT_SHORTSHORT_U   = 2;
+      const T_INT_SHORT          = 3;
+      const T_INT_SHORT_U        = 4;
+      const T_INT_LONG           = 5;
+      const T_INT_LONG_U         = 6;
+      const T_INT_LONGLONG       = 7;
+      const T_INT_LONGLONG_U     = 8;
 
-      const T_DECIMAL='D';
-      const T_TIMESTAMP='T';
-      const T_VOID='V';
+      const T_DECIMAL            = 9;
+      const T_TIMESTAMP          = 10;
+      const T_VOID               = 11;
 
-      const T_BOOL='t';
+      const T_BOOL               = 12;
 
-      const T_STRING_SHORT='s';
-      const T_STRING_LONG='S';
+      const T_STRING_SHORT       = 13;
+      const T_STRING_LONG        = 14;
 
-      const T_ARRAY='A';
-      const T_TABLE='F';
+      const T_ARRAY              = 15;
+      const T_TABLE              = 16;
 
 
       protected $data=array();
@@ -41,13 +43,48 @@ abstract class AMQPAbstractCollection implements \Iterator, \ArrayAccess
 
       private static $_proto=null;
 
-      private static $_types=array();
-      private static $_types080=array( //isset() is waaay faster than in_array()
-         self::T_INT_LONG     => true,
-         self::T_DECIMAL      => true,
-         self::T_TIMESTAMP    => true,
-         self::T_STRING_LONG  => true,
-         self::T_TABLE        => true
+      /*
+       * Field types messy mess http://www.rabbitmq.com/amqp-0-9-1-errata.html#section_3
+       * Default behaviour is to use rabbitMQ compatible field-set
+       * Define AMQP_STRICT_FLD_TYPES=true to use strict AMQP instead
+       */
+      private static $_types_080=array(
+         self::T_INT_LONG           => 'I',
+         self::T_DECIMAL            => 'D',
+         self::T_TIMESTAMP          => 'T',
+         self::T_STRING_LONG        => 'S',
+         self::T_TABLE              => 'F'
+      );
+      private static $_types_091=array(
+         self::T_INT_SHORTSHORT     =>'b',
+         self::T_INT_SHORTSHORT_U   =>'B',
+         self::T_INT_SHORT          =>'U',
+         self::T_INT_SHORT_U        =>'u',
+         self::T_INT_LONG           =>'I',
+         self::T_INT_LONG_U         =>'i',
+         self::T_INT_LONGLONG       =>'L',
+         self::T_INT_LONGLONG_U     =>'l',
+         self::T_DECIMAL            =>'D',
+         self::T_TIMESTAMP          =>'T',
+         self::T_VOID               =>'V',
+         self::T_BOOL               =>'t',
+         self::T_STRING_SHORT       =>'s',
+         self::T_STRING_LONG        =>'S',
+         self::T_ARRAY              =>'A',
+         self::T_TABLE              =>'F'
+      );
+      private static $_types_rabbit=array(
+         self::T_INT_SHORTSHORT     =>'b',
+         self::T_INT_SHORT          =>'s',
+         self::T_INT_LONG           =>'I',
+         self::T_INT_LONGLONG       =>'l',
+         self::T_DECIMAL            =>'D',
+         self::T_TIMESTAMP          =>'T',
+         self::T_VOID               =>'V',
+         self::T_BOOL               =>'t',
+         self::T_STRING_LONG        =>'S',
+         self::T_ARRAY              =>'A',
+         self::T_TABLE              =>'F'
       );
 
 
@@ -133,7 +170,7 @@ abstract class AMQPAbstractCollection implements \Iterator, \ArrayAccess
             elseif($val instanceof AMQPDecimal) $val=array(self::T_DECIMAL, $val);
             elseif($val instanceof self)
                {
-                  //avoid silent correction of strictly typed values
+                  //avoid silent type correction of strictly typed values
                   self::checkDataTypeIsSupported($val->getType(), false);
                   $val=array($val->getType(), $val);
                }
@@ -203,7 +240,12 @@ abstract class AMQPAbstractCollection implements \Iterator, \ArrayAccess
 
       final public static function getProto()
          {
-            if(self::$_proto===null) self::$_proto=AbstractChannel::getProtocolVersion();
+            if(self::$_proto===null)
+               {
+                  self::$_proto=defined('AMQP_STRICT_FLD_TYPES') && AMQP_STRICT_FLD_TYPES?
+                     AbstractChannel::getProtocolVersion() :
+                     self::PROTO_RBT;
+               }
             return self::$_proto;
          }
 
@@ -214,25 +256,25 @@ abstract class AMQPAbstractCollection implements \Iterator, \ArrayAccess
 
 
       /**
-       * @param bool $ignoreProtoRestrictions Whether to ignore current AMQP protocol restrictions and return all known types
-       * @return array  Known data types as array KEYS
+       * @return array  [dataTypeConstant => dataTypeSymbol]
        */
-      final public static function getSupportedDataTypes($ignoreProtoRestrictions=false)
+      final public static function getSupportedDataTypes()
          {
-            if(self::isProto(self::PROTO_080) && !$ignoreProtoRestrictions) $t=self::$_types080;
-            else
+            switch($proto=self::getProto())
                {
-                  if(empty(self::$_types))
-                     {
-                        $r=new \ReflectionClass(__CLASS__);
-                        foreach($r->getConstants() as $n=>$v)
-                           {
-                              if(preg_match('/^T_/', $n)) self::$_types[$v]=true;
-                           }
-                     }
-                  $t=self::$_types;
+                  case self::PROTO_080:
+                     $types=self::$_types_080;
+                     break;
+                  case self::PROTO_091:
+                     $types=self::$_types_091;
+                     break;
+                  case self::PROTO_RBT:
+                     $types=self::$_types_rabbit;
+                     break;
+                  default:
+                     throw new Exception\AMQPOutOfRangeException('Unknown protocol: '.$proto);
                }
-            return $t;
+            return $types;
          }
 
       /**
@@ -244,7 +286,7 @@ abstract class AMQPAbstractCollection implements \Iterator, \ArrayAccess
          {
             try
                {
-                  $supported=self::getSupportedDataTypes(false);
+                  $supported=self::getSupportedDataTypes();
                   if(!isset($supported[$type])) throw new Exception\AMQPOutOfRangeException('AMQP-'.self::getProto().' doesn\'t support data of type ['.$type.']');
                   return true;
                }
@@ -253,6 +295,21 @@ abstract class AMQPAbstractCollection implements \Iterator, \ArrayAccess
                   if($return) return false;
                   else throw $ex;
                }
+         }
+
+
+      final public static function getSymbolForDataType($t)
+         {
+            $types=self::getSupportedDataTypes();
+            if(!isset($types[$t])) throw new Exception\AMQPOutOfRangeException('AMQP-'.self::getProto().' doesn\'t support data of type ['.$t.']');
+            return $types[$t];
+         }
+
+      final public static function getDataTypeForSymbol($s)
+         {
+            $symbols=array_flip(self::getSupportedDataTypes());
+            if(!isset($symbols[$s])) throw new Exception\AMQPOutOfRangeException('AMQP-'.self::getProto().' doesn\'t define data type symbol ['.$s.']');
+            return $symbols[$s];
          }
 
 

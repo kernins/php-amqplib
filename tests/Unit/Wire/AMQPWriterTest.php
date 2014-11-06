@@ -18,6 +18,7 @@ class AMQPWriterTest extends \PHPUnit_Framework_TestCase
 
     public function setUp()
     {
+        if(!defined('AMQP_STRICT_FLD_TYPES')) define('AMQP_STRICT_FLD_TYPES', true);
         $this->_writer = new AMQPWriter();
     }
 
@@ -113,7 +114,7 @@ class AMQPWriterTest extends \PHPUnit_Framework_TestCase
 
     public function testWriteTableThrowsExceptionOnInvalidType()
     {
-        $this->setExpectedException('PhpAmqpLib\Exception\AMQPInvalidArgumentException', "Unsupported type '_'");
+        $this->setExpectedException('PhpAmqpLib\Exception\AMQPOutOfRangeException');
 
         $this->_writer->write_table(array(
             'x-foo' => array('_', 'bar'),

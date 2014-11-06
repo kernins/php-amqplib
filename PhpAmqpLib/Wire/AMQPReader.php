@@ -441,10 +441,10 @@ class AMQPReader extends AbstractClient
          $this->bitcount = $this->bits = 0;
 
          $val = NULL;
-         switch($fieldType)
+         switch(AMQPAbstractCollection::getDataTypeForSymbol($fieldType))
             {
                case AMQPAbstractCollection::T_INT_SHORTSHORT:
-                  //according to AMQP091 spec, 'b' is not bit, it is short-short-int
+                  //according to AMQP091 spec, 'b' is not bit, it is short-short-int, also valid for rabbit/qpid
                   //$val=$this->read_bit();
                   $val=$this->read_signed_octet();
                   break;

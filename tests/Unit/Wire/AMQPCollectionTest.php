@@ -13,16 +13,16 @@ class AMQPCollectionTest extends \PHPUnit_Framework_TestCase
 
             $this->assertEquals(
                array(
-                  array('I', 1),
-                  array('I', -2147483648),
-                  array('I', 2147483647),
-                  array('S', -2147483649),
-                  array('S', 2147483648),
-                  array('I', 1),
-                  array('I', 0),
-                  array('F', array('foo'=>array('S', 'bar'))),
-                  array('F', array(0=>array('S', 'foo'))),
-                  array('F', array())
+                  array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('I'), 1),
+                  array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('I'), -2147483648),
+                  array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('I'), 2147483647),
+                  array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('S'), -2147483649),
+                  array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('S'), 2147483648),
+                  array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('I'), 1),
+                  array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('I'), 0),
+                  array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('F'), array('foo'=>array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('S'), 'bar'))),
+                  array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('F'), array(0=>array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('S'), 'foo'))),
+                  array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('F'), array())
                ),
                $this->getEncodedRawData($a)
             );
@@ -41,16 +41,44 @@ class AMQPCollectionTest extends \PHPUnit_Framework_TestCase
             $is64=PHP_INT_SIZE==8;
             $this->assertEquals(
                array(
-                  array('I', 1),
-                  array('I', -2147483648),
-                  array('I', 2147483647),
-                  array($is64? 'L':'S', -2147483649),
-                  array($is64? 'L':'S', 2147483648),
-                  array('t', true),
-                  array('t', false),
-                  array('F', array('foo'=>array('S', 'bar'))),
-                  array('A', array(array('S', 'foo'))),
-                  array('A', array())
+                  array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('I'), 1),
+                  array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('I'), -2147483648),
+                  array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('I'), 2147483647),
+                  array($is64? Wire\AMQPAbstractCollection::getDataTypeForSymbol('L'):Wire\AMQPAbstractCollection::getDataTypeForSymbol('S'), -2147483649),
+                  array($is64? Wire\AMQPAbstractCollection::getDataTypeForSymbol('L'):Wire\AMQPAbstractCollection::getDataTypeForSymbol('S'), 2147483648),
+                  array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('t'), true),
+                  array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('t'), false),
+                  array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('F'), array('foo'=>array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('S'), 'bar'))),
+                  array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('A'), array(array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('S'), 'foo'))),
+                  array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('A'), array())
+               ),
+               $this->getEncodedRawData($a)
+            );
+
+            $eData=$this->getEncodedRawData($a, false);
+            $this->assertEquals($eData[7][1] instanceof Wire\AMQPTable, true);
+            $this->assertEquals($eData[8][1] instanceof Wire\AMQPArray, true);
+            $this->assertEquals($eData[9][1] instanceof Wire\AMQPArray, true);
+         }
+
+      public function testEncodeRabbit()
+         {
+            $this->setProtoVersion(Wire\AMQPAbstractCollection::PROTO_RBT);
+            $a=new Wire\AMQPArray(array(1, (int)-2147483648, (int)2147483647, -2147483649, 2147483648, true, false, array('foo'=>'bar'), array('foo'), array()));
+
+            $is64=PHP_INT_SIZE==8;
+            $this->assertEquals(
+               array(
+                  array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('I'), 1),
+                  array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('I'), -2147483648),
+                  array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('I'), 2147483647),
+                  array($is64? Wire\AMQPAbstractCollection::getDataTypeForSymbol('l'):Wire\AMQPAbstractCollection::getDataTypeForSymbol('S'), -2147483649),
+                  array($is64? Wire\AMQPAbstractCollection::getDataTypeForSymbol('l'):Wire\AMQPAbstractCollection::getDataTypeForSymbol('S'), 2147483648),
+                  array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('t'), true),
+                  array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('t'), false),
+                  array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('F'), array('foo'=>array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('S'), 'bar'))),
+                  array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('A'), array(array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('S'), 'foo'))),
+                  array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('A'), array())
                ),
                $this->getEncodedRawData($a)
             );
@@ -90,6 +118,16 @@ class AMQPCollectionTest extends \PHPUnit_Framework_TestCase
             $this->fail('Unsupported data type not detected!');
          }
 
+      public function testPushUnsupportedDataTypeRabbit()
+         {
+            $this->setProtoVersion(Wire\AMQPAbstractCollection::PROTO_RBT);
+
+            $a=new Wire\AMQPArray();
+            $this->setExpectedException('PhpAmqpLib\\Exception\\AMQPOutOfRangeException');
+            $a->push(12345, Wire\AMQPArray::T_INT_LONGLONG_U);
+            $this->fail('Unsupported data type not detected!');
+         }
+
 
 
       public function testPushWithType()
@@ -98,14 +136,46 @@ class AMQPCollectionTest extends \PHPUnit_Framework_TestCase
             $a->push(576, Wire\AMQPArray::T_INT_LONG);
             $a->push('foo', Wire\AMQPArray::T_STRING_LONG);
             $a->push(new Wire\AMQPTable(array('foo'=>'bar')));
-            $a->push(new Wire\AMQPArray(array('bar', 'baz')));
+            $a->push(new Wire\AMQPArray(array('bar')));
 
             $this->assertEquals(
                array(
-                  array('I', 576),
-                  array('S', 'foo'),
-                  array('F', array('foo'=>array('S', 'bar'))),
-                  array('A', array(array('S', 'bar'), array('S', 'baz')))
+                  array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('I'), 576),
+                  array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('S'), 'foo'),
+                  array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('F'), array('foo'=>array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('S'), 'bar'))),
+                  array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('A'), array(array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('S'), 'bar')))
+               ),
+               $this->getEncodedRawData($a)
+            );
+         }
+
+      public function testConflictingFieldSymbols()
+         {
+            $this->setProtoVersion(Wire\AMQPAbstractCollection::PROTO_091);
+
+            $a=new Wire\AMQPArray();
+            $a->push(576, Wire\AMQPArray::T_INT_SHORT);
+            $a->push(1234567, Wire\AMQPArray::T_INT_LONGLONG);
+
+            $this->assertEquals(
+               array(
+                  array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('U'), 576),
+                  array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('L'), 1234567)
+               ),
+               $this->getEncodedRawData($a)
+            );
+
+
+            $this->setProtoVersion(Wire\AMQPAbstractCollection::PROTO_RBT);
+
+            $a=new Wire\AMQPArray();
+            $a->push(576, Wire\AMQPArray::T_INT_SHORT);
+            $a->push(1234567, Wire\AMQPArray::T_INT_LONGLONG);
+
+            $this->assertEquals(
+               array(
+                  array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('s'), 576),
+                  array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('l'), 1234567)
                ),
                $this->getEncodedRawData($a)
             );
@@ -184,6 +254,15 @@ class AMQPCollectionTest extends \PHPUnit_Framework_TestCase
             $this->assertEquals($a->getNativeData(), array_values($d));
          }
 
+      public function testArrayRoundTripRabbit()
+         {
+            $this->setProtoVersion(Wire\AMQPAbstractCollection::PROTO_RBT);
+
+            $d=$this->getTestData();
+            $a=new Wire\AMQPArray($d);
+            $this->assertEquals($a->getNativeData(), array_values($d));
+         }
+
       public function testTableRoundTrip080()
          {
             $this->setProtoVersion(Wire\AMQPAbstractCollection::PROTO_080);
@@ -196,6 +275,15 @@ class AMQPCollectionTest extends \PHPUnit_Framework_TestCase
       public function testTableRoundTrip091()
          {
             $this->setProtoVersion(Wire\AMQPAbstractCollection::PROTO_091);
+
+            $d=$this->getTestData();
+            $a=new Wire\AMQPTable($d);
+            $this->assertEquals($a->getNativeData(), $d);
+         }
+
+      public function testTableRoundTripRabbit()
+         {
+            $this->setProtoVersion(Wire\AMQPAbstractCollection::PROTO_RBT);
 
             $d=$this->getTestData();
             $a=new Wire\AMQPTable($d);
@@ -229,11 +317,11 @@ class AMQPCollectionTest extends \PHPUnit_Framework_TestCase
          {
             $d=array('a'=>1, 'b'=>-2147, 'c'=>array('foo'=>'bar'), 'd'=>true, 'e'=>false);
             $ed=array(
-               'a'=>array('I', 1),
-               'b'=>array('I', -2147),
-               'c'=>array('F', array('foo'=>array('S', 'bar'))),
-               'd'=>array('t', true),
-               'e'=>array('t', false)
+               'a'=>array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('I'), 1),
+               'b'=>array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('I'), -2147),
+               'c'=>array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('F'), array('foo'=>array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('S'), 'bar'))),
+               'd'=>array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('t'), true),
+               'e'=>array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('t'), false)
             );
 
             $this->setProtoVersion(Wire\AMQPAbstractCollection::PROTO_091);
@@ -251,10 +339,10 @@ class AMQPCollectionTest extends \PHPUnit_Framework_TestCase
             $this->assertEquals(empty($a['d']), false);
             $this->assertEquals(empty($a['nonexistent']), true);
 
-            $this->assertEquals($a['a'], array('I', 1));
+            $this->assertEquals($a['a'], array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('I'), 1));
 
-            $a['foo']=array('I', 1);
-            $this->assertEquals($a['foo'], array('I', 1));
+            $a['foo']=array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('I'), 1);
+            $this->assertEquals($a['foo'], array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('I'), 1));
          }
 
       public function testArrayAccessOffsetSetInvalidValue()
