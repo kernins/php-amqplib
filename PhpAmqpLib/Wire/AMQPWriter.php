@@ -380,6 +380,12 @@ class AMQPWriter extends AbstractClient
         return $this;
     }
 
+    //for compat with method mapping used by AMQPMessage
+    public function write_table_object($d)
+    {
+        return $this->write_table($d);
+    }
+
    /**
     * @param int $type  One of AMQPAbstractCollection::T_* constants
     * @param mixed $val

@@ -26,7 +26,7 @@ class AMQPMessage extends GenericContent
     protected static $PROPERTIES = array(
         "content_type" => "shortstr",
         "content_encoding" => "shortstr",
-        "application_headers" => "table",
+        "application_headers" => "table_object",
         "delivery_mode" => "octet",
         "priority" => "octet",
         "correlation_id" => "shortstr",

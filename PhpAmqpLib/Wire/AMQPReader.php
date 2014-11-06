@@ -380,8 +380,11 @@ class AMQPReader extends AbstractClient
     /**
      * Read an AMQP table, and return as a PHP array. keys are strings,
      * values are (type,value) tuples.
+     *
+     * @param bool $returnObject    Whether to return AMQPArray instance instead of plain array
+     * @return array|AMQPTable
      */
-    public function read_table()
+    public function read_table($returnObject=false)
     {
         $this->bitcount = $this->bits = 0;
         $tlen = $this->read_php_int();
@@ -391,15 +394,20 @@ class AMQPReader extends AbstractClient
         }
 
         $table_data = new AMQPReader($this->rawread($tlen), null);
-        $result = array();
+        $result = $returnObject? new AMQPTable() : array();
         while ($table_data->tell() < $tlen) {
             $name = $table_data->read_shortstr();
-            $ftype = $table_data->rawread(1);
-            $val = $table_data->read_value($ftype);
-            $result[$name] = array($ftype, $val);
+            $ftype = AMQPAbstractCollection::getDataTypeForSymbol($ftypeSym=$table_data->rawread(1));
+            $val = $table_data->read_value($ftype, $returnObject);
+            $returnObject? $result->set($name, $val, $ftype) : $result[$name] = array($ftypeSym, $val);
         }
 
         return $result;
+    }
+
+    public function read_table_object()
+    {
+        return $this->read_table(true);
     }
 
 
@@ -407,9 +415,10 @@ class AMQPReader extends AbstractClient
     /**
      * Reads the array in the next value.
      *
-     * @return array
+     * @param bool $returnObject    Whether to return AMQPArray instance instead of plain array
+     * @return array|AMQPArray
      */
-    public function read_array()
+    public function read_array($returnObject=false)
     {
         $this->bitcount = $this->bits = 0;
 
@@ -417,31 +426,37 @@ class AMQPReader extends AbstractClient
         $arrayLength = $this->read_php_int();
         $endOffset = $this->offset + $arrayLength;
 
-        $result = array();
+        $result = $returnObject? new AMQPArray() : array();
         // Read values until we reach the end of the array
         while ($this->offset < $endOffset) {
-            $fieldType = $this->rawread(1);
-            $result[] = $this->read_value($fieldType);
+            $fieldType = AMQPAbstractCollection::getDataTypeForSymbol($this->rawread(1));
+            $fieldValue = $this->read_value($fieldType, $returnObject);
+            $returnObject? $result->push($fieldValue, $fieldType) : $result[] = $fieldValue;
         }
 
         return $result;
     }
 
+    public function read_array_object()
+    {
+        return $this->read_array(true);
+    }
 
 
     /**
      * Reads the next value as the provided field type.
      *
-     * @param string $fieldType the char field type
+     * @param int    $fieldType              One of AMQPAbstractCollection::T_* constants
+     * @param bool   $collectionsAsObjects   Description
      *
      * @return mixed
      */
-   private function read_value($fieldType)
+   private function read_value($fieldType, $collectionsAsObjects=false)
       {
          $this->bitcount = $this->bits = 0;
 
          $val = NULL;
-         switch(AMQPAbstractCollection::getDataTypeForSymbol($fieldType))
+         switch($fieldType)
             {
                case AMQPAbstractCollection::T_INT_SHORTSHORT:
                   //according to AMQP091 spec, 'b' is not bit, it is short-short-int, also valid for rabbit/qpid
@@ -487,10 +502,10 @@ class AMQPReader extends AbstractClient
                   $val=$this->read_longstr();
                   break;
                case AMQPAbstractCollection::T_ARRAY:
-                  $val=$this->read_array();
+                  $val=$this->read_array($collectionsAsObjects);
                   break;
                case AMQPAbstractCollection::T_TABLE:
-                  $val=$this->read_table();
+                  $val=$this->read_table($collectionsAsObjects);
                   break;
                case AMQPAbstractCollection::T_VOID:
                   $val=NULL;

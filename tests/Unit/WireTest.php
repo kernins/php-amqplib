@@ -4,6 +4,8 @@ namespace PhpAmqpLib\Tests\Unit;
 
 use PhpAmqpLib\Wire\AMQPReader;
 use PhpAmqpLib\Wire\AMQPWriter;
+use PhpAmqpLib\Wire\AMQPArray;
+use PhpAmqpLib\Wire\AMQPTable;
 
 class WireTest extends \PHPUnit_Framework_TestCase
    {
@@ -362,6 +364,104 @@ class WireTest extends \PHPUnit_Framework_TestCase
       protected function longstrWriteRead($v)
          {
             $this->writeAndRead($v, 'write_longstr', 'read_longstr');
+         }
+
+
+
+      public function testArrayWriteReadNative()
+         {
+            $d=array(1, -2147483648, 2147483647, true, false, array(array('foo', array('bar'))), array());
+
+            $w=new AMQPWriter();
+            $w->write_array($d);
+
+            $r=new AMQPReader($w->getvalue());
+            $rd=$r->read_array();
+
+            $this->assertEquals($d, $rd);
+         }
+
+      public function testArrayWriteReadCollection()
+         {
+            $d=array(
+               12345,
+               -12345,
+               3000000000,
+               -3000000000,
+               9.2233720368548,
+               (float)9223372036854800000,
+               new \DateTime(),
+               true,
+               false,
+               array(1, 2, 3, 'foo', array('bar'=>'baz'), array('boo', false, 5), true),
+               array(),
+               array('foo'=>'bar', 'baz'=>'boo', 'date'=>new \DateTime(), 'bool'=>true, 'tbl'=>array('bar'=>'baz'), 'arr'=>array('boo', false, 5)),
+               array(1=>5, 3=>'foo', 786=>674),
+               array(1, array(2, array(3, array(4)))),
+               array('i'=>1, 'n'=>array('i'=>2, 'n'=>array('i'=>3, 'n'=>array('i'=>4))))
+            );
+
+            $w=new AMQPWriter();
+            $w->write_array(new AMQPArray($d));
+
+            $r=new AMQPReader($w->getvalue());
+            $rd=$r->read_array(true)->getNativeData();
+
+            $this->assertEquals($d, $rd);
+         }
+
+
+      public function testTableWriteReadNative()
+         {
+            $d=array(
+               'a'=>array('I', 1),
+               'b'=>array('I', -2147483648),
+               'c'=>array('I', 2147483647),
+               'd'=>array('l', -2147483649),
+               'e'=>array('l', 2147483648),
+               'f'=>array('t', true),
+               'g'=>array('t', false),
+               'h'=>array('F', array('foo'=>array('S', 'baz'))),
+               'i'=>array('A', array(array('foo', array('bar')))),
+               'j'=>array('A', array())
+            );
+
+            $w=new AMQPWriter();
+            $w->write_table($d);
+
+            $r=new AMQPReader($w->getvalue());
+            $rd=$r->read_table();
+
+            $this->assertEquals($d, $rd);
+         }
+
+      public function testTableWriteReadCollection()
+         {
+            $d=array(
+               'long' => 12345,
+               'long_neg' => -12345,
+               'longlong' => 3000000000,
+               'longlong_neg' => -3000000000,
+               'float_low' => 9.2233720368548,
+               'float_high' => (float)9223372036854800000,
+               'datetime' => new \DateTime(),
+               'bool_true' => true,
+               'bool_false' => false,
+               'array' => array(1, 2, 3, 'foo', array('bar'=>'baz'), array('boo', false, 5), true),
+               'array_empty' => array(),
+               'table' => array('foo'=>'bar', 'baz'=>'boo', 'date'=>new \DateTime(), 'bool'=>true, 'tbl'=>array('bar'=>'baz'), 'arr'=>array('boo', false, 5)),
+               'table_num' => array(1=>5, 3=>'foo', 786=>674),
+               'array_nested' => array(1, array(2, array(3, array(4)))),
+               'table_nested' => array('i'=>1, 'n'=>array('i'=>2, 'n'=>array('i'=>3, 'n'=>array('i'=>4))))
+            );
+
+            $w=new AMQPWriter();
+            $w->write_table(new AMQPTable($d));
+
+            $r=new AMQPReader($w->getvalue());
+            $rd=$r->read_table(true)->getNativeData();
+
+            $this->assertEquals($d, $rd);
          }
 
 
