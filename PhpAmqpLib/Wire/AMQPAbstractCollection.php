@@ -5,9 +5,8 @@ use PhpAmqpLib\Channel\AbstractChannel, PhpAmqpLib\Exception;
 
 /**
  * Iterator implemented for transparent integration with AMQPWriter::write_[array|table]()
- * ArrayAccess implemented for read_[array|table]()
  */
-abstract class AMQPAbstractCollection implements \Iterator, \ArrayAccess
+abstract class AMQPAbstractCollection implements \Iterator
    {
       //protocol defines available field types and their corresponding symbols
       const PROTO_080=AbstractChannel::PROTO_080;
@@ -337,29 +336,5 @@ abstract class AMQPAbstractCollection implements \Iterator, \ArrayAccess
       public function valid()
          {
             return key($this->data)!==null;
-         }
-
-
-
-      public function offsetExists($offset)
-         {
-            return array_key_exists($offset, $this->data);
-         }
-
-      public function offsetGet($offset)
-         {
-            return $this->data[$offset];
-         }
-
-      public function offsetSet($offset, $value)
-         {
-            if(!strlen($offset)) throw new Exception\AMQPInvalidArgumentException('Offset can not be empty');
-            if(!is_array($value) || (count($value)!=2)) throw new Exception\AMQPInvalidArgumentException('Value must be array with exactly 2 members: valueType and valueData');
-            $this->data[$offset]=$value;
-         }
-
-      public function offsetUnset($offset)
-         {
-            unset($this->data[$offset]);
          }
    }

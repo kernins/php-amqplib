@@ -313,7 +313,7 @@ class AMQPCollectionTest extends \PHPUnit_Framework_TestCase
 
 
 
-      public function testIteratorAndArrayAccess()
+      public function testIterator()
          {
             $d=array('a'=>1, 'b'=>-2147, 'c'=>array('foo'=>'bar'), 'd'=>true, 'e'=>false);
             $ed=array(
@@ -332,51 +332,6 @@ class AMQPCollectionTest extends \PHPUnit_Framework_TestCase
                   if(!isset($d[$key])) $this->fail('Unknown key: '.$key);
                   $this->assertEquals($ed[$key], $val[1] instanceof Wire\AMQPAbstractCollection? array($val[0], $this->getEncodedRawData($val[1])) : $val);
                }
-
-            $this->assertEquals(isset($a['a'], $a['c'], $a['e']), true);
-            $this->assertEquals(isset($a['nonexistent']), false);
-
-            $this->assertEquals(empty($a['d']), false);
-            $this->assertEquals(empty($a['nonexistent']), true);
-
-            $this->assertEquals($a['a'], array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('I'), 1));
-
-            $a['foo']=array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('I'), 1);
-            $this->assertEquals($a['foo'], array(Wire\AMQPAbstractCollection::getDataTypeForSymbol('I'), 1));
-         }
-
-      public function testArrayAccessOffsetSetInvalidValue()
-         {
-            $this->setProtoVersion(Wire\AMQPAbstractCollection::PROTO_091);
-            $a=new Wire\AMQPTable();
-
-            $this->setExpectedException('PhpAmqpLib\\Exception\\AMQPInvalidArgumentException', 'Value must be array with exactly 2 members: valueType and valueData');
-            $a['foo']='bar';
-            $this->fail('ArrayAccess offsetSet invalid value not detected!');
-         }
-
-      public function testTableArrayAccessOffsetSetEmptyKey()
-         {
-            $this->setProtoVersion(Wire\AMQPAbstractCollection::PROTO_091);
-            $a=new Wire\AMQPTable();
-
-            $this->setExpectedException('PhpAmqpLib\\Exception\\AMQPInvalidArgumentException', 'Offset can not be empty');
-            $a[]=array('I', 1);
-            $this->fail('Table ArrayAccess offsetSet empty offset not detected!');
-         }
-
-      public function testArrayArrayAccessOffsetSetEmptyKey()
-         {
-            $this->setProtoVersion(Wire\AMQPAbstractCollection::PROTO_091);
-            $a=new Wire\AMQPArray();
-
-            $a[]=array('I', 1);
-            $a[]=array('I', 2);
-            $a[]=array('I', 3);
-
-            $this->assertEquals($a[0], array('I', 1));
-            $this->assertEquals($a[1], array('I', 2));
-            $this->assertEquals($a[2], array('I', 3));
          }
 
 
