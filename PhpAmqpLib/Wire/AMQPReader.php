@@ -436,7 +436,7 @@ class AMQPReader extends AbstractClient
      *
      * @return mixed
      */
-   public function read_value($fieldType)
+   private function read_value($fieldType)
       {
          $this->bitcount = $this->bits = 0;
 
