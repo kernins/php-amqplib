@@ -417,10 +417,8 @@ class AMQPWriter extends AbstractClient
                   $this->write_longlong($val);
                   break;
                case AMQPAbstractCollection::T_DECIMAL:
-                  //decimal-value = scale long-uint, scale = OCTET
-                  //according to https://www.rabbitmq.com/resources/specs/amqp0-[8|9-1].pdf
                   $this->write_octet($val->e);
-                  $this->write_long($val->n);
+                  $this->write_signed_long($val->n);
                   break;
                case AMQPAbstractCollection::T_TIMESTAMP:
                   $this->write_timestamp($val);

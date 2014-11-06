@@ -470,10 +470,8 @@ class AMQPReader extends AbstractClient
                   $val=$this->read_longlong();
                   break;
                case AMQPAbstractCollection::T_DECIMAL:
-                  //decimal-value = scale long-uint, scale = OCTET
-                  //according to https://www.rabbitmq.com/resources/specs/amqp0-[8|9-1].pdf
                   $e = $this->read_octet();
-                  $n = $this->read_long();
+                  $n = $this->read_signed_long();
                   $val = new AMQPDecimal($n, $e);
                   break;
                case AMQPAbstractCollection::T_TIMESTAMP:
