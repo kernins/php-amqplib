@@ -165,6 +165,7 @@ abstract class AMQPAbstractCollection implements \Iterator
             elseif(is_float($val)) $val=$this->encodeFloat($val);
             elseif(is_int($val)) $val=$this->encodeInt($val);
             elseif(is_bool($val)) $val=$this->encodeBool($val);
+            elseif(is_null($val)) $val=$this->encodeVoid();
             elseif($val instanceof \DateTime) $val=array(self::T_TIMESTAMP, $val->getTimestamp());
             elseif($val instanceof AMQPDecimal) $val=array(self::T_DECIMAL, $val);
             elseif($val instanceof self)
@@ -198,6 +199,9 @@ abstract class AMQPAbstractCollection implements \Iterator
                            break;
                         case self::T_TIMESTAMP:
                            $val=\DateTime::createFromFormat('U', $val);
+                           break;
+                        case self::T_VOID:
+                           $val=null;
                            break;
                         case self::T_ARRAY:
                         case self::T_TABLE:
@@ -233,6 +237,11 @@ abstract class AMQPAbstractCollection implements \Iterator
          {
             $val=(bool)$val;
             return self::isProto(self::PROTO_080)? array(self::T_INT_LONG, (int)$val) : array(self::T_BOOL, $val);
+         }
+
+      protected function encodeVoid()
+         {
+            return self::isProto(self::PROTO_080)? $this->encodeString('') : array(self::T_VOID, null);
          }
 
 

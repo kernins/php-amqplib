@@ -22,8 +22,9 @@ $hdrs=new Wire\AMQPTable(array(
    'num3' => -2147483648,
    'true' => true,
    'false' => false,
+   'void' => null,
    'date' => new DateTime(),
-   'array' => array('foo', 'bar', 5, 5674625, 'ttt', array(5, 8, 2)),
+   'array' => array(null, 'foo', 'bar', 5, 5674625, 'ttt', array(5, 8, 2)),
    'arr_with_tbl' => array(
       'bar',
       5,

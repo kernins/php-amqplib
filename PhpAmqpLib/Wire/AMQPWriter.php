@@ -444,6 +444,8 @@ class AMQPWriter extends AbstractClient
                case AMQPAbstractCollection::T_TABLE:
                   $this->write_table($val);
                   break;
+               case AMQPAbstractCollection::T_VOID:
+                  break;
                default:
                   throw new AMQPInvalidArgumentException(sprintf("Unsupported type '%s'", $type));
             }
