@@ -28,9 +28,9 @@ class AMQPCollectionTest extends \PHPUnit_Framework_TestCase
             );
 
             $eData=$this->getEncodedRawData($a, false);
-            $this->assertEquals($eData[7][1] instanceof Wire\AMQPTable, true);
-            $this->assertEquals($eData[8][1] instanceof Wire\AMQPTable, true);
-            $this->assertEquals($eData[9][1] instanceof Wire\AMQPTable, true);
+            $this->assertEquals(true, $eData[7][1] instanceof Wire\AMQPTable);
+            $this->assertEquals(true, $eData[8][1] instanceof Wire\AMQPTable);
+            $this->assertEquals(true, $eData[9][1] instanceof Wire\AMQPTable);
          }
 
       public function testEncode091()
@@ -56,9 +56,9 @@ class AMQPCollectionTest extends \PHPUnit_Framework_TestCase
             );
 
             $eData=$this->getEncodedRawData($a, false);
-            $this->assertEquals($eData[7][1] instanceof Wire\AMQPTable, true);
-            $this->assertEquals($eData[8][1] instanceof Wire\AMQPArray, true);
-            $this->assertEquals($eData[9][1] instanceof Wire\AMQPArray, true);
+            $this->assertEquals(true, $eData[7][1] instanceof Wire\AMQPTable);
+            $this->assertEquals(true, $eData[8][1] instanceof Wire\AMQPArray);
+            $this->assertEquals(true, $eData[9][1] instanceof Wire\AMQPArray);
          }
 
       public function testEncodeRabbit()
@@ -84,9 +84,9 @@ class AMQPCollectionTest extends \PHPUnit_Framework_TestCase
             );
 
             $eData=$this->getEncodedRawData($a, false);
-            $this->assertEquals($eData[7][1] instanceof Wire\AMQPTable, true);
-            $this->assertEquals($eData[8][1] instanceof Wire\AMQPArray, true);
-            $this->assertEquals($eData[9][1] instanceof Wire\AMQPArray, true);
+            $this->assertEquals(true, $eData[7][1] instanceof Wire\AMQPTable);
+            $this->assertEquals(true, $eData[8][1] instanceof Wire\AMQPArray);
+            $this->assertEquals(true, $eData[9][1] instanceof Wire\AMQPArray);
          }
 
       public function testEncodeUnknownDatatype()
@@ -242,7 +242,7 @@ class AMQPCollectionTest extends \PHPUnit_Framework_TestCase
 
             $d=$this->getTestData();
             $a=new Wire\AMQPArray($d);
-            $this->assertEquals($a->getNativeData(), array_values($d));
+            $this->assertEquals(array_values($d), $a->getNativeData());
          }
 
       public function testArrayRoundTrip091()
@@ -251,7 +251,7 @@ class AMQPCollectionTest extends \PHPUnit_Framework_TestCase
 
             $d=$this->getTestData();
             $a=new Wire\AMQPArray($d);
-            $this->assertEquals($a->getNativeData(), array_values($d));
+            $this->assertEquals(array_values($d), $a->getNativeData());
          }
 
       public function testArrayRoundTripRabbit()
@@ -260,7 +260,7 @@ class AMQPCollectionTest extends \PHPUnit_Framework_TestCase
 
             $d=$this->getTestData();
             $a=new Wire\AMQPArray($d);
-            $this->assertEquals($a->getNativeData(), array_values($d));
+            $this->assertEquals(array_values($d), $a->getNativeData());
          }
 
       public function testTableRoundTrip080()
@@ -269,7 +269,7 @@ class AMQPCollectionTest extends \PHPUnit_Framework_TestCase
 
             $d=$this->getTestData();
             $a=new Wire\AMQPTable($d);
-            $this->assertEquals($a->getNativeData(), $d);
+            $this->assertEquals($d, $a->getNativeData());
          }
 
       public function testTableRoundTrip091()
@@ -278,7 +278,7 @@ class AMQPCollectionTest extends \PHPUnit_Framework_TestCase
 
             $d=$this->getTestData();
             $a=new Wire\AMQPTable($d);
-            $this->assertEquals($a->getNativeData(), $d);
+            $this->assertEquals($d, $a->getNativeData());
          }
 
       public function testTableRoundTripRabbit()
@@ -287,7 +287,7 @@ class AMQPCollectionTest extends \PHPUnit_Framework_TestCase
 
             $d=$this->getTestData();
             $a=new Wire\AMQPTable($d);
-            $this->assertEquals($a->getNativeData(), $d);
+            $this->assertEquals($d, $a->getNativeData());
          }
 
       protected function getTestData()
