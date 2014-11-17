@@ -383,31 +383,46 @@ class WireTest extends \PHPUnit_Framework_TestCase
 
       public function testArrayWriteReadCollection()
          {
-            $d=array(
+            $w=new AMQPWriter();
+            $w->write_array(new AMQPArray(array(
                12345,
                -12345,
                3000000000,
                -3000000000,
                9.2233720368548,
                (float)9223372036854800000,
-               new \DateTime(),
                true,
                false,
                array(1, 2, 3, 'foo', array('bar'=>'baz'), array('boo', false, 5), true),
                array(),
-               array('foo'=>'bar', 'baz'=>'boo', 'date'=>new \DateTime(), 'bool'=>true, 'tbl'=>array('bar'=>'baz'), 'arr'=>array('boo', false, 5)),
+               array('foo'=>'bar', 'baz'=>'boo', 'bool'=>true, 'tbl'=>array('bar'=>'baz'), 'arr'=>array('boo', false, 5)),
                array(1=>5, 3=>'foo', 786=>674),
                array(1, array(2, array(3, array(4)))),
                array('i'=>1, 'n'=>array('i'=>2, 'n'=>array('i'=>3, 'n'=>array('i'=>4))))
-            );
-
-            $w=new AMQPWriter();
-            $w->write_array(new AMQPArray($d));
+            )));
 
             $r=new AMQPReader($w->getvalue());
-            $rd=$r->read_array(true)->getNativeData();
 
-            $this->assertEquals($d, $rd);
+            //type casting - thanks to ancient phpunit on travis
+            $this->assertEquals(
+               array(
+                  12345,
+                  -12345,
+                  (string)3000000000,
+                  (string)-3000000000,
+                  (string)(float)9.2233720368548,
+                  (string)(float)9223372036854800000,
+                  true,
+                  false,
+                  array(1, 2, 3, 'foo', array('bar'=>'baz'), array('boo', false, 5), true),
+                  array(),
+                  array('foo'=>'bar', 'baz'=>'boo', 'bool'=>true, 'tbl'=>array('bar'=>'baz'), 'arr'=>array('boo', false, 5)),
+                  array(1=>5, 3=>'foo', 786=>674),
+                  array(1, array(2, array(3, array(4)))),
+                  array('i'=>1, 'n'=>array('i'=>2, 'n'=>array('i'=>3, 'n'=>array('i'=>4))))
+               ),
+               $r->read_array(true)->getNativeData()
+            );
          }
 
 
@@ -437,31 +452,46 @@ class WireTest extends \PHPUnit_Framework_TestCase
 
       public function testTableWriteReadCollection()
          {
-            $d=array(
+            $w=new AMQPWriter();
+            $w->write_table(new AMQPTable(array(
                'long' => 12345,
                'long_neg' => -12345,
                'longlong' => 3000000000,
                'longlong_neg' => -3000000000,
                'float_low' => 9.2233720368548,
                'float_high' => (float)9223372036854800000,
-               'datetime' => new \DateTime(),
                'bool_true' => true,
                'bool_false' => false,
                'array' => array(1, 2, 3, 'foo', array('bar'=>'baz'), array('boo', false, 5), true),
                'array_empty' => array(),
-               'table' => array('foo'=>'bar', 'baz'=>'boo', 'date'=>new \DateTime(), 'bool'=>true, 'tbl'=>array('bar'=>'baz'), 'arr'=>array('boo', false, 5)),
+               'table' => array('foo'=>'bar', 'baz'=>'boo', 'bool'=>true, 'tbl'=>array('bar'=>'baz'), 'arr'=>array('boo', false, 5)),
                'table_num' => array(1=>5, 3=>'foo', 786=>674),
                'array_nested' => array(1, array(2, array(3, array(4)))),
                'table_nested' => array('i'=>1, 'n'=>array('i'=>2, 'n'=>array('i'=>3, 'n'=>array('i'=>4))))
-            );
-
-            $w=new AMQPWriter();
-            $w->write_table(new AMQPTable($d));
+            )));
 
             $r=new AMQPReader($w->getvalue());
-            $rd=$r->read_table(true)->getNativeData();
 
-            $this->assertEquals($d, $rd);
+            //type casting - thanks to ancient phpunit on travis
+            $this->assertEquals(
+               array(
+                  'long' => 12345,
+                  'long_neg' => -12345,
+                  'longlong' => (string)3000000000,
+                  'longlong_neg' => (string)-3000000000,
+                  'float_low' => (string)(float)9.2233720368548,
+                  'float_high' => (string)(float)9223372036854800000,
+                  'bool_true' => true,
+                  'bool_false' => false,
+                  'array' => array(1, 2, 3, 'foo', array('bar'=>'baz'), array('boo', false, 5), true),
+                  'array_empty' => array(),
+                  'table' => array('foo'=>'bar', 'baz'=>'boo', 'bool'=>true, 'tbl'=>array('bar'=>'baz'), 'arr'=>array('boo', false, 5)),
+                  'table_num' => array(1=>5, 3=>'foo', 786=>674),
+                  'array_nested' => array(1, array(2, array(3, array(4)))),
+                  'table_nested' => array('i'=>1, 'n'=>array('i'=>2, 'n'=>array('i'=>3, 'n'=>array('i'=>4))))
+               ),
+               $r->read_table(true)->getNativeData()
+            );
          }
 
 

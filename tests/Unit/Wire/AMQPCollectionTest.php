@@ -240,72 +240,110 @@ class AMQPCollectionTest extends \PHPUnit_Framework_TestCase
          {
             $this->setProtoVersion(Wire\AMQPAbstractCollection::PROTO_080);
 
-            $d=$this->getTestData();
-            $a=new Wire\AMQPArray($d);
-            $this->assertEquals(array_values($d), $a->getNativeData());
+            $a=new Wire\AMQPArray($this->getTestDataSrc());
+            $this->assertEquals(array_values($this->getTestDataCmp080()), $a->getNativeData());
          }
 
       public function testArrayRoundTrip091()
          {
             $this->setProtoVersion(Wire\AMQPAbstractCollection::PROTO_091);
 
-            $d=$this->getTestData();
-            $a=new Wire\AMQPArray($d);
-            $this->assertEquals(array_values($d), $a->getNativeData());
+            $a=new Wire\AMQPArray($this->getTestDataSrc());
+            $this->assertEquals(array_values($this->getTestDataCmp()), $a->getNativeData());
          }
 
       public function testArrayRoundTripRabbit()
          {
             $this->setProtoVersion(Wire\AMQPAbstractCollection::PROTO_RBT);
 
-            $d=$this->getTestData();
-            $a=new Wire\AMQPArray($d);
-            $this->assertEquals(array_values($d), $a->getNativeData());
+            $a=new Wire\AMQPArray($this->getTestDataSrc());
+            $this->assertEquals(array_values($this->getTestDataCmp()), $a->getNativeData());
          }
 
       public function testTableRoundTrip080()
          {
             $this->setProtoVersion(Wire\AMQPAbstractCollection::PROTO_080);
 
-            $d=$this->getTestData();
-            $a=new Wire\AMQPTable($d);
-            $this->assertEquals($d, $a->getNativeData());
+            $a=new Wire\AMQPTable($this->getTestDataSrc());
+            $this->assertEquals($this->getTestDataCmp080(), $a->getNativeData());
          }
 
       public function testTableRoundTrip091()
          {
             $this->setProtoVersion(Wire\AMQPAbstractCollection::PROTO_091);
 
-            $d=$this->getTestData();
-            $a=new Wire\AMQPTable($d);
-            $this->assertEquals($d, $a->getNativeData());
+            $a=new Wire\AMQPTable($this->getTestDataSrc());
+            $this->assertEquals($this->getTestDataCmp(), $a->getNativeData());
          }
 
       public function testTableRoundTripRabbit()
          {
             $this->setProtoVersion(Wire\AMQPAbstractCollection::PROTO_RBT);
 
-            $d=$this->getTestData();
-            $a=new Wire\AMQPTable($d);
-            $this->assertEquals($d, $a->getNativeData());
+            $a=new Wire\AMQPTable($this->getTestDataSrc());
+            $this->assertEquals($this->getTestDataCmp(), $a->getNativeData());
          }
 
-      protected function getTestData()
+      protected function getTestDataSrc()
          {
             return array(
                'long' => 12345,
                'long_neg' => -12345,
                'longlong' => 3000000000,
                'longlong_neg' => -3000000000,
-               'float_low' => 9.2233720368548,
+               'float_low' => (float)9.2233720368548,
                'float_high' => (float)9223372036854800000,
-               'datetime' => new \DateTime('NOW', new \DateTimeZone('UTC')),
                'bool_true' => true,
                'bool_false' => false,
                'void' => null,
                'array' => array(1, 2, 3, 'foo', array('bar'=>'baz'), array('boo', false, 5), true, null),
                'array_empty' => array(),
-               'table' => array('foo'=>'bar', 'baz'=>'boo', 'date'=>new \DateTime('NOW', new \DateTimeZone('UTC')), 'bool'=>true, 'tbl'=>array('bar'=>'baz'), 'arr'=>array('boo', false, 5)),
+               'table' => array('foo'=>'bar', 'baz'=>'boo', 'bool'=>true, 'tbl'=>array('bar'=>'baz'), 'arr'=>array('boo', false, 5)),
+               'table_num' => array(1=>5, 3=>'foo', 786=>674),
+               'array_nested' => array(1, array(2, array(3, array(4)))),
+               'table_nested' => array('i'=>1, 'n'=>array('i'=>2, 'n'=>array('i'=>3, 'n'=>array('i'=>4))))
+            );
+         }
+
+      /**
+       * The only purpose of this *Cmp / *Cmp080 shit is to pass tests on travis's ancient phpunit 3.7.38
+       */
+      protected function getTestDataCmp()
+         {
+            return array(
+               'long' => 12345,
+               'long_neg' => -12345,
+               'longlong' => 3000000000,
+               'longlong_neg' => -3000000000,
+               'float_low' => (string)(float)9.2233720368548,
+               'float_high' => (string)(float)9223372036854800000,
+               'bool_true' => true,
+               'bool_false' => false,
+               'void' => null,
+               'array' => array(1, 2, 3, 'foo', array('bar'=>'baz'), array('boo', false, 5), true, null),
+               'array_empty' => array(),
+               'table' => array('foo'=>'bar', 'baz'=>'boo', 'bool'=>true, 'tbl'=>array('bar'=>'baz'), 'arr'=>array('boo', false, 5)),
+               'table_num' => array(1=>5, 3=>'foo', 786=>674),
+               'array_nested' => array(1, array(2, array(3, array(4)))),
+               'table_nested' => array('i'=>1, 'n'=>array('i'=>2, 'n'=>array('i'=>3, 'n'=>array('i'=>4))))
+            );
+         }
+
+      protected function getTestDataCmp080()
+         {
+            return array(
+               'long' => 12345,
+               'long_neg' => -12345,
+               'longlong' => (string)3000000000,
+               'longlong_neg' => (string)-3000000000,
+               'float_low' => (string)(float)9.2233720368548,
+               'float_high' => (string)(float)9223372036854800000,
+               'bool_true' => 1,
+               'bool_false' => 0,
+               'void' => '',
+               'array' => array(1, 2, 3, 'foo', array('bar'=>'baz'), array('boo', 0, 5), 1, ''),
+               'array_empty' => array(),
+               'table' => array('foo'=>'bar', 'baz'=>'boo', 'bool'=>1, 'tbl'=>array('bar'=>'baz'), 'arr'=>array('boo', 0, 5)),
                'table_num' => array(1=>5, 3=>'foo', 786=>674),
                'array_nested' => array(1, array(2, array(3, array(4)))),
                'table_nested' => array('i'=>1, 'n'=>array('i'=>2, 'n'=>array('i'=>3, 'n'=>array('i'=>4))))
